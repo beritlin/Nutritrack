@@ -1,0 +1,7 @@
+{
+  "name": "NutriTrack AI - 智能飲食夥伴",
+  "description": "一個基於 Gemini AI 的全方位健康管理工具，幫助您記錄飲食、追蹤體重變化，並提供智能營養建議。",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
