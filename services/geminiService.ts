@@ -1,17 +1,16 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI, Schema } from "@google/generative-ai";
 import { 
   UserProfile, FoodItem, MealType, DietStrategy, CycleDayType, 
   GoalType, ServingTargets, ExerciseItem, ExerciseType 
 } from "../types";
 
-// ---------------- Nutrition calculation (your original code unchanged) ----------------
+// ---------------- Nutrition calculation (你的原始程式碼保持不動) ----------------
 
 export const calculateNutritionTargets = (profile: UserProfile) => {
-  // ...（這部分保持原樣，不需要動）
-  // 我省略內容以避免太長，你保留你原本的即可
+  // 保留你的內容就好
 };
 
-// ---------------- Gemini SDK setup ----------------
+// ---------------- Gemini Setup ----------------
 
 const getAI = () => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -19,27 +18,27 @@ const getAI = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// ---------------- Schema rewrite (new SDK uses SchemaType) ----------------
+// ---------------- Schemas ----------------
 
-const FOOD_ANALYSIS_SCHEMA = {
-  type: SchemaType.OBJECT,
+const FOOD_ANALYSIS_SCHEMA: Schema = {
+  type: "object",
   properties: {
-    name: { type: SchemaType.STRING },
-    calories: { type: SchemaType.NUMBER },
+    name: { type: "string" },
+    calories: { type: "number" },
     servings: {
-      type: SchemaType.OBJECT,
+      type: "object",
       properties: {
-        grains: { type: SchemaType.NUMBER },
-        proteins: { type: SchemaType.NUMBER },
-        vegetables: { type: SchemaType.NUMBER },
-        fruits: { type: SchemaType.NUMBER },
-        dairy: { type: SchemaType.NUMBER },
-        oils: { type: SchemaType.NUMBER },
+        grains: { type: "number" },
+        proteins: { type: "number" },
+        vegetables: { type: "number" },
+        fruits: { type: "number" },
+        dairy: { type: "number" },
+        oils: { type: "number" },
       },
       required: ["grains", "proteins", "vegetables", "fruits", "dairy", "oils"],
     },
-    mainCategory: { type: SchemaType.STRING },
-    notes: { type: SchemaType.STRING },
+    mainCategory: { type: "string" },
+    notes: { type: "string" },
   },
   required: ["name", "calories", "servings", "mainCategory"],
 };
@@ -49,13 +48,15 @@ const FOOD_ANALYSIS_SCHEMA = {
 export const analyzeFoodWithGemini = async (description: string, mealType: MealType) => {
   const ai = getAI();
 
-  const response = await ai.generativeModel({
+  const model = ai.getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: FOOD_ANALYSIS_SCHEMA,
     }
-  }).generateContent(`Analyze this: "${description}".`);
+  });
+
+  const response = await model.generateContent(`Analyze this food: ${description}`);
 
   const text = await response.response.text();
   const result = JSON.parse(text);
@@ -70,20 +71,22 @@ export const analyzeFoodWithGemini = async (description: string, mealType: MealT
   };
 };
 
-// ---------------- Image Analysis ----------------
+// ---------------- Food Image Analysis ----------------
 
 export const analyzeFoodImageWithGemini = async (imageBase64: string, mealType: MealType) => {
   const ai = getAI();
 
-  const base64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, "");
-
-  const response = await ai.generativeModel({
+  const model = ai.getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: FOOD_ANALYSIS_SCHEMA
     }
-  }).generateContent([
+  });
+
+  const base64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, "");
+
+  const response = await model.generateContent([
     {
       inlineData: {
         mimeType: "image/jpeg",
@@ -115,30 +118,32 @@ export const analyzeExerciseWithGemini = async (
 ) => {
   const ai = getAI();
 
-  const schema = {
-    type: SchemaType.OBJECT,
+  const schema: Schema = {
+    type: "object",
     properties: {
-      name: { type: SchemaType.STRING },
-      caloriesBurned: { type: SchemaType.NUMBER },
-      type: { type: SchemaType.STRING },
-      notes: { type: SchemaType.STRING }
+      name: { type: "string" },
+      caloriesBurned: { type: "number" },
+      type: { type: "string" },
+      notes: { type: "string" }
     },
-    required: ["name", "caloriesBurned", "type"],
+    required: ["name", "caloriesBurned", "type"]
   };
 
-  const prompt = `
-    User Weight: ${userWeight}kg
-    Exercise: "${description}"
-    Duration: ${durationMinutes} minutes
-  `;
-
-  const response = await ai.generativeModel({
+  const model = ai.getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: schema
     }
-  }).generateContent(prompt);
+  });
+
+  const prompt = `
+    Weight: ${userWeight}kg
+    Exercise: "${description}"
+    Duration: ${durationMinutes} minutes
+  `;
+
+  const response = await model.generateContent(prompt);
 
   const text = await response.response.text();
   const result = JSON.parse(text);
@@ -157,22 +162,21 @@ export const analyzeExerciseWithGemini = async (
 export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]) => {
   const ai = getAI();
 
-  const logsText = logs.slice(0, 10)
-    .map(l => `${l.name} (${l.calories}kcal)`)
+  const recent = logs.slice(0, 10)
+    .map(l => `${l.name} (${l.calories} kcal)`)
     .join(", ");
 
   const prompt = `
-    User Profile:
-    - BMI: ${profile.bmi}
-    - TDEE: ${profile.tdee}
-    - Target Calories: ${profile.targetCalories}
-    - Strategy: ${profile.dietStrategy}
-    - Meals: ${logsText}
+    BMI: ${profile.bmi}
+    TDEE: ${profile.tdee}
+    Target Calories: ${profile.targetCalories}
+    Strategy: ${profile.dietStrategy}
+    Meals: ${recent}
   `;
 
-  const response = await ai
-    .generativeModel({ model: "gemini-2.5-flash" })
-    .generateContent(prompt);
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const response = await model.generateContent(prompt);
 
   return response.response.text();
 };
