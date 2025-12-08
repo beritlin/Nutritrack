@@ -203,7 +203,9 @@ export const analyzeFoodWithGemini = async (
   description: string, 
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
+  // Use process.env.API_KEY as per guideline
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Analyze this food description: "${description}". ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`,
@@ -253,8 +255,8 @@ export const analyzeFoodImageWithGemini = async (
       model: "gemini-2.5-flash",
       contents: {
         parts: [
-            { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` },
-            imagePart
+          { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` },
+          imagePart
         ]
       },
       config: {
@@ -313,7 +315,7 @@ export const analyzeExerciseWithGemini = async (
             }
         }
     });
-    
+
     const text = response.text;
 
     if (!text) throw new Error("No response from AI");
@@ -347,8 +349,9 @@ export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Pro
   `;
 
   const response = await ai.models.generateContent({ 
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-flash", 
     contents: prompt 
   });
+
   return response.text || "目前無法產生建議，請稍後再試。";
 };
