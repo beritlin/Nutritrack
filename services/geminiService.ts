@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, FoodItem, MealType, DietStrategy, CycleDayType, GoalType, FoodCategory, ServingTargets, ExerciseItem, ExerciseType } from "../types";
 
@@ -176,35 +175,12 @@ const FOOD_ANALYSIS_PROMPT_TEMPLATE = `
     Determine the "Main Category" (the one with highest servings or most relevant).
 `;
 
-// Schema definition using Type from @google/genai
-const FOOD_ANALYSIS_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    name: { type: Type.STRING, description: "Name of the food in Traditional Chinese" },
-    calories: { type: Type.NUMBER, description: "Total calories (kcal)" },
-    servings: {
-        type: Type.OBJECT,
-        properties: {
-            grains: { type: Type.NUMBER, description: "Servings of Grains" },
-            proteins: { type: Type.NUMBER, description: "Servings of Proteins" },
-            vegetables: { type: Type.NUMBER, description: "Servings of Vegetables" },
-            fruits: { type: Type.NUMBER, description: "Servings of Fruits" },
-            dairy: { type: Type.NUMBER, description: "Servings of Dairy" },
-            oils: { type: Type.NUMBER, description: "Servings of Oils & Nuts" },
-        },
-        required: ["grains", "proteins", "vegetables", "fruits", "dairy", "oils"]
-    },
-    mainCategory: { type: Type.STRING, description: "One of: 全榖雜糧類, 豆魚蛋肉類, 蔬菜類, 水果類, 乳品類, 油脂與堅果種子類, 其他" },
-    notes: { type: Type.STRING, description: "Short explanation of the estimation in Traditional Chinese" }
-  },
-  required: ["name", "calories", "servings", "mainCategory"],
-};
-
-const getGenAI = () => {
-    // API key must be obtained exclusively from process.env.API_KEY
-    const apiKey = process.env.API_KEY;
+// Helper to get initialized client
+const getAiClient = () => {
+    // VITE_API_KEY is standard for Vite/Vercel
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
-        throw new Error("API_KEY is not set. Please set it in Environment Variables.");
+        throw new Error("API Key not found. Please set VITE_API_KEY in your environment variables.");
     }
     return new GoogleGenAI({ apiKey });
 };
@@ -213,20 +189,39 @@ export const analyzeFoodWithGemini = async (
   description: string, 
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
-  const ai = getGenAI();
+  const ai = getAiClient();
   const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Analyze this food description: "${description}". ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: FOOD_ANALYSIS_SCHEMA
+          responseMimeType: "application/json",
+          responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING, description: "Name of the food in Traditional Chinese" },
+                    calories: { type: Type.NUMBER, description: "Total calories (kcal)" },
+                    servings: {
+                        type: Type.OBJECT,
+                        properties: {
+                            grains: { type: Type.NUMBER, description: "Servings of Grains" },
+                            proteins: { type: Type.NUMBER, description: "Servings of Proteins" },
+                            vegetables: { type: Type.NUMBER, description: "Servings of Vegetables" },
+                            fruits: { type: Type.NUMBER, description: "Servings of Fruits" },
+                            dairy: { type: Type.NUMBER, description: "Servings of Dairy" },
+                            oils: { type: Type.NUMBER, description: "Servings of Oils & Nuts" },
+                        },
+                        required: ["grains", "proteins", "vegetables", "fruits", "dairy", "oils"]
+                    },
+                    mainCategory: { type: Type.STRING, description: "One of: 全榖雜糧類, 豆魚蛋肉類, 蔬菜類, 水果類, 乳品類, 油脂與堅果種子類, 其他" },
+                    notes: { type: Type.STRING, description: "Short explanation of the estimation in Traditional Chinese" }
+                },
+                required: ["name", "calories", "servings", "mainCategory"],
+          }
       }
   });
 
   const text = response.text;
-  
   if (!text) throw new Error("No response from AI");
-
   const jsonResult = JSON.parse(text);
 
   return {
@@ -243,39 +238,55 @@ export const analyzeFoodImageWithGemini = async (
   imageBase64: string,
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
-  const ai = getGenAI();
+  const ai = getAiClient();
   
-  // Dynamically extract the MIME type from the data URL prefix
+  // Extract MIME type
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
   const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-  // Remove the data URL prefix if present to get just the base64 string
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
   const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
         parts: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`
-          }
+            { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` },
+            {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                }
+            }
         ]
       },
       config: {
-        responseMimeType: "application/json",
-        responseSchema: FOOD_ANALYSIS_SCHEMA
+          responseMimeType: "application/json",
+          responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING, description: "Name of the food in Traditional Chinese" },
+                    calories: { type: Type.NUMBER, description: "Total calories (kcal)" },
+                    servings: {
+                        type: Type.OBJECT,
+                        properties: {
+                            grains: { type: Type.NUMBER, description: "Servings of Grains" },
+                            proteins: { type: Type.NUMBER, description: "Servings of Proteins" },
+                            vegetables: { type: Type.NUMBER, description: "Servings of Vegetables" },
+                            fruits: { type: Type.NUMBER, description: "Servings of Fruits" },
+                            dairy: { type: Type.NUMBER, description: "Servings of Dairy" },
+                            oils: { type: Type.NUMBER, description: "Servings of Oils & Nuts" },
+                        },
+                        required: ["grains", "proteins", "vegetables", "fruits", "dairy", "oils"]
+                    },
+                    mainCategory: { type: Type.STRING, description: "One of: 全榖雜糧類, 豆魚蛋肉類, 蔬菜類, 水果類, 乳品類, 油脂與堅果種子類, 其他" },
+                    notes: { type: Type.STRING, description: "Short explanation of the estimation in Traditional Chinese" }
+                },
+                required: ["name", "calories", "servings", "mainCategory"],
+          }
       }
   });
   
   const text = response.text;
-  
   if (!text) throw new Error("No response from AI");
-
   const jsonResult = JSON.parse(text);
 
   return {
@@ -293,7 +304,7 @@ export const analyzeExerciseWithGemini = async (
   userWeight: number,
   durationMinutes: number
 ): Promise<Omit<ExerciseItem, 'id' | 'date'>> => {
-    const ai = getGenAI();
+    const ai = getAiClient();
     
     const prompt = `
       User Weight: ${userWeight}kg.
@@ -316,7 +327,7 @@ export const analyzeExerciseWithGemini = async (
                     name: { type: Type.STRING },
                     caloriesBurned: { type: Type.NUMBER },
                     type: { type: Type.STRING, enum: ["Cardio", "Strength"] },
-                    notes: { type: Type.STRING, description: "Brief calculation basis in Traditional Chinese" }
+                    notes: { type: Type.STRING }
                 },
                 required: ["name", "caloriesBurned", "type"]
             }
@@ -324,7 +335,6 @@ export const analyzeExerciseWithGemini = async (
     });
 
     const text = response.text;
-
     if (!text) throw new Error("No response from AI");
     const jsonResult = JSON.parse(text);
 
@@ -338,7 +348,7 @@ export const analyzeExerciseWithGemini = async (
 };
 
 export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Promise<string> => {
-  const ai = getGenAI();
+  const ai = getAiClient();
   
   const recentLogs = logs.slice(0, 10);
   const logsText = recentLogs.map(l => `${l.name} (${l.calories}kcal, Grains:${l.servings.grains}, Protein:${l.servings.proteins})`).join(", ");
@@ -359,5 +369,6 @@ export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Pro
       model: "gemini-2.5-flash",
       contents: prompt
   });
+  
   return response.text || "目前無法產生建議，請稍後再試。";
 };

@@ -1,19 +1,10 @@
+// This file provides type definitions for Vite environment variables.
+// We manually define ImportMetaEnv since the 'vite/client' type definition is missing.
 
-
-declare module '*.svg' {
-  import * as React from 'react';
-  export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement> & { title?: string }>;
-  const src: string;
-  export default src;
+interface ImportMetaEnv {
+  readonly VITE_API_KEY: string;
 }
 
-declare module '*.jpg';
-declare module '*.png';
-declare module '*.json';
-
-declare var process: {
-  env: {
-    API_KEY: string;
-    [key: string]: string | undefined;
-  }
-};
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
