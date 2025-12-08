@@ -204,8 +204,7 @@ export const analyzeFoodWithGemini = async (
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const response = await ai.models.generateContent({ 
+  const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Analyze this food description: "${description}". ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`,
       config: {
@@ -250,13 +249,13 @@ export const analyzeFoodImageWithGemini = async (
     },
   };
 
-  const response = await ai.models.generateContent({ 
+  const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
-          parts: [
-              imagePart,
-              { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` }
-          ]
+        parts: [
+            { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` },
+            imagePart
+        ]
       },
       config: {
         responseMimeType: "application/json",
@@ -297,7 +296,7 @@ export const analyzeExerciseWithGemini = async (
       3. Provide a short, standard Traditional Chinese name for the activity.
     `;
 
-    const response = await ai.models.generateContent({ 
+    const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -314,7 +313,7 @@ export const analyzeExerciseWithGemini = async (
             }
         }
     });
-
+    
     const text = response.text;
 
     if (!text) throw new Error("No response from AI");
@@ -348,8 +347,8 @@ export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Pro
   `;
 
   const response = await ai.models.generateContent({ 
-      model: "gemini-2.5-flash", 
-      contents: prompt 
+    model: "gemini-2.5-flash",
+    contents: prompt 
   });
   return response.text || "目前無法產生建議，請稍後再試。";
 };
