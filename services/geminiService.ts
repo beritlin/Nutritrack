@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, FoodItem, MealType, DietStrategy, CycleDayType, GoalType, FoodCategory, ServingTargets, ExerciseItem, ExerciseType } from "../types";
 
@@ -199,13 +200,20 @@ const FOOD_ANALYSIS_SCHEMA = {
   required: ["name", "calories", "servings", "mainCategory"],
 };
 
+const getGenAI = () => {
+    // API key must be obtained exclusively from process.env.API_KEY
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        throw new Error("API_KEY is not set. Please set it in Environment Variables.");
+    }
+    return new GoogleGenAI({ apiKey });
+};
+
 export const analyzeFoodWithGemini = async (
   description: string, 
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
-  // Use process.env.API_KEY as per guideline
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+  const ai = getGenAI();
   const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Analyze this food description: "${description}". ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`,
@@ -235,28 +243,27 @@ export const analyzeFoodImageWithGemini = async (
   imageBase64: string,
   mealType: MealType
 ): Promise<Omit<FoodItem, 'id' | 'date'>> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+  const ai = getGenAI();
+  
   // Dynamically extract the MIME type from the data URL prefix
   const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
   const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
   // Remove the data URL prefix if present to get just the base64 string
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-
-  const imagePart = {
-    inlineData: {
-      data: base64Data,
-      mimeType: mimeType,
-    },
-  };
 
   const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: {
         parts: [
-          { text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}` },
-          imagePart
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType,
+            },
+          },
+          {
+            text: `Look at this food image. ${FOOD_ANALYSIS_PROMPT_TEMPLATE}`
+          }
         ]
       },
       config: {
@@ -286,7 +293,7 @@ export const analyzeExerciseWithGemini = async (
   userWeight: number,
   durationMinutes: number
 ): Promise<Omit<ExerciseItem, 'id' | 'date'>> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getGenAI();
     
     const prompt = `
       User Weight: ${userWeight}kg.
@@ -331,7 +338,7 @@ export const analyzeExerciseWithGemini = async (
 };
 
 export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getGenAI();
   
   const recentLogs = logs.slice(0, 10);
   const logsText = recentLogs.map(l => `${l.name} (${l.calories}kcal, Grains:${l.servings.grains}, Protein:${l.servings.proteins})`).join(", ");
@@ -348,10 +355,9 @@ export const getDietAdvice = async (profile: UserProfile, logs: FoodItem[]): Pro
     Please provide 3 concise, bulleted actionable tips in Traditional Chinese. Focus on "Food Group Servings" (六大類份數) balance.
   `;
 
-  const response = await ai.models.generateContent({ 
-    model: "gemini-2.5-flash", 
-    contents: prompt 
+  const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt
   });
-
   return response.text || "目前無法產生建議，請稍後再試。";
 };
