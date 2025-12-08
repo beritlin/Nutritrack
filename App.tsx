@@ -102,6 +102,10 @@ function App() {
     setExerciseLogs(prev => [log, ...prev]);
   };
 
+  const handleUpdateExerciseLog = (updatedLog: ExerciseItem) => {
+    setExerciseLogs(prev => prev.map(log => log.id === updatedLog.id ? updatedLog : log));
+  };
+
   const handleDeleteExerciseLog = (id: string) => {
     setExerciseLogs(prev => prev.filter(log => log.id !== id));
   };
@@ -251,6 +255,7 @@ function App() {
             onUpdateLog={handleUpdateFoodLog}
             onDeleteLog={handleDeleteFoodLog}
             onAddExercise={handleAddExerciseLog}
+            onUpdateExercise={handleUpdateExerciseLog}
             onDeleteExercise={handleDeleteExerciseLog}
             selectedDate={selectedDate}
             userWeight={profile.currentWeight}

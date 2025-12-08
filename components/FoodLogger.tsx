@@ -1,7 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { FoodItem, MealType, ExerciseItem, ExerciseType } from '../types';
 import { analyzeFoodWithGemini, analyzeExerciseWithGemini, analyzeFoodImageWithGemini } from '../services/geminiService';
-import { Plus, Loader2, Sparkles, Trash2, Dumbbell, Flame, Waves, Utensils, Edit2, Check, X, Camera } from 'lucide-react';
+import { Plus, Loader2, Sparkles, Trash2, Dumbbell, Flame, Waves, Utensils, Edit2, Check, X, Camera, PenTool } from 'lucide-react';
 import { MEAL_TYPES_LIST, FOOD_CATEGORY_CONFIG } from '../constants';
 
 interface FoodLoggerProps {
@@ -11,6 +12,7 @@ interface FoodLoggerProps {
   onUpdateLog: (log: FoodItem) => void;
   onDeleteLog: (id: string) => void;
   onAddExercise: (log: ExerciseItem) => void;
+  onUpdateExercise: (log: ExerciseItem) => void;
   onDeleteExercise: (id: string) => void;
   selectedDate: string;
   userWeight: number;
@@ -18,7 +20,7 @@ interface FoodLoggerProps {
 
 const FoodLogger: React.FC<FoodLoggerProps> = ({ 
     logs, exerciseLogs, onAddLog, onUpdateLog, onDeleteLog, 
-    onAddExercise, onDeleteExercise, selectedDate, userWeight 
+    onAddExercise, onUpdateExercise, onDeleteExercise, selectedDate, userWeight 
 }) => {
   const [activeTab, setActiveTab] = useState<'food' | 'exercise'>('food');
   const [isAdding, setIsAdding] = useState(false);
@@ -36,6 +38,7 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
 
   // Editing State
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
+  const [editingExercise, setEditingExercise] = useState<ExerciseItem | null>(null);
 
   // Image Upload Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +67,21 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleManualFoodAdd = () => {
+    const newLog: FoodItem = {
+        id: crypto.randomUUID(),
+        date: selectedDate,
+        name: foodDescription || '未命名餐點',
+        calories: 0,
+        servings: { grains: 0, proteins: 0, vegetables: 0, fruits: 0, dairy: 0, oils: 0 },
+        mealType: selectedMeal,
+        mainCategory: '其他'
+    };
+    setEditingFood(newLog);
+    setIsAdding(false);
+    setFoodDescription('');
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,6 +146,20 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
       }
   };
 
+  const handleManualExerciseAdd = () => {
+    const newLog: ExerciseItem = {
+        id: crypto.randomUUID(),
+        date: selectedDate,
+        name: exerciseDescription || '自主訓練',
+        caloriesBurned: 0,
+        durationMinutes: duration || 30,
+        type: ExerciseType.Strength // Default
+    };
+    setEditingExercise(newLog);
+    setIsAdding(false);
+    setExerciseDescription('');
+  };
+
   const handleSaveEditedFood = () => {
     if (!editingFood) return;
 
@@ -142,9 +174,26 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
     setEditingFood(null);
   };
 
+  const handleSaveEditedExercise = () => {
+    if (!editingExercise) return;
+
+    const exists = exerciseLogs.some(log => log.id === editingExercise.id);
+    if (exists) {
+        onUpdateExercise(editingExercise);
+    } else {
+        onAddExercise(editingExercise);
+    }
+    setEditingExercise(null);
+  };
+
   const handleEditChange = (field: keyof FoodItem, value: any) => {
       if (!editingFood) return;
       setEditingFood({ ...editingFood, [field]: value });
+  };
+
+  const handleExerciseEditChange = (field: keyof ExerciseItem, value: any) => {
+      if (!editingExercise) return;
+      setEditingExercise({ ...editingExercise, [field]: value });
   };
 
   const handleEditServing = (key: string, value: number) => {
@@ -194,7 +243,7 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
         </button>
       </div>
 
-      {/* AI Analysis / Adding Modal */}
+      {/* Adding / AI Analysis Modal */}
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -291,22 +340,34 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
                 <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-2">
                 <button 
                   onClick={() => setIsAdding(false)}
-                  className="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                  className="px-4 py-3 rounded-xl font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 transition"
                   disabled={isLoading}
                 >
                   取消
                 </button>
+
+                {/* Manual Add Button */}
+                <button
+                    onClick={activeTab === 'food' ? handleManualFoodAdd : handleManualExerciseAdd}
+                    disabled={isLoading}
+                    className="flex-1 py-3 rounded-xl font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition flex items-center justify-center gap-1 text-sm"
+                >
+                    <PenTool className="w-4 h-4" />
+                    手動紀錄
+                </button>
+
+                {/* AI Analysis Button */}
                 <button 
                   onClick={activeTab === 'food' ? handleFoodAnalysis : handleExerciseAnalysis}
                   disabled={isLoading || (activeTab === 'food' ? !foodDescription.trim() : !exerciseDescription.trim())}
-                  className={`flex-1 py-3 rounded-xl font-semibold text-white transition flex items-center justify-center gap-2 disabled:opacity-50
+                  className={`flex-1 py-3 rounded-xl font-semibold text-white transition flex items-center justify-center gap-2 disabled:opacity-50 text-sm
                     ${activeTab === 'food' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600'}`}
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  {isLoading ? '分析中...' : '文字分析'}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isLoading ? '分析中' : 'AI 分析'}
                 </button>
               </div>
             </div>
@@ -380,6 +441,90 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
                           <button 
                               onClick={handleSaveEditedFood}
                               className="flex-1 py-3 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+                          >
+                              <Check className="w-5 h-5" />
+                              確認儲存
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Edit/Review Exercise Modal */}
+      {editingExercise && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in duration-200">
+                   <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                          <Edit2 className="w-5 h-5 text-orange-500" />
+                          編輯運動紀錄
+                      </h3>
+                      <button onClick={() => setEditingExercise(null)} className="text-gray-400 hover:text-gray-600">
+                          <X className="w-6 h-6" />
+                      </button>
+                  </div>
+
+                  <div className="space-y-4">
+                       <div>
+                          <label className="text-xs text-gray-500 font-bold ml-1 mb-1 block">運動名稱</label>
+                          <input 
+                              type="text" 
+                              value={editingExercise.name}
+                              onChange={(e) => handleExerciseEditChange('name', e.target.value)}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500 text-gray-800 font-medium"
+                          />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                           <div>
+                              <label className="text-xs text-gray-500 font-bold ml-1 mb-1 block">消耗熱量 (kcal)</label>
+                              <input 
+                                  type="number" 
+                                  value={editingExercise.caloriesBurned}
+                                  onChange={(e) => handleExerciseEditChange('caloriesBurned', Number(e.target.value))}
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500 text-gray-800 font-bold"
+                              />
+                           </div>
+                           <div>
+                              <label className="text-xs text-gray-500 font-bold ml-1 mb-1 block">持續時間 (分鐘)</label>
+                              <input 
+                                  type="number" 
+                                  value={editingExercise.durationMinutes}
+                                  onChange={(e) => handleExerciseEditChange('durationMinutes', Number(e.target.value))}
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500 text-gray-800 font-bold"
+                              />
+                           </div>
+                      </div>
+
+                      <div>
+                          <label className="text-xs text-gray-500 font-bold ml-1 mb-1 block">運動類型</label>
+                          <div className="flex bg-gray-50 p-1 rounded-xl">
+                              <button 
+                                onClick={() => handleExerciseEditChange('type', ExerciseType.Cardio)}
+                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editingExercise.type === ExerciseType.Cardio ? 'bg-white shadow text-sky-500' : 'text-gray-400'}`}
+                              >
+                                  有氧運動
+                              </button>
+                               <button 
+                                onClick={() => handleExerciseEditChange('type', ExerciseType.Strength)}
+                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${editingExercise.type === ExerciseType.Strength ? 'bg-white shadow text-purple-500' : 'text-gray-400'}`}
+                              >
+                                  無氧/重訓
+                              </button>
+                          </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                          <button 
+                              onClick={() => setEditingExercise(null)}
+                              className="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition"
+                          >
+                              取消
+                          </button>
+                          <button 
+                              onClick={handleSaveEditedExercise}
+                              className="flex-1 py-3 rounded-xl font-semibold text-white bg-orange-500 hover:bg-orange-600 transition flex items-center justify-center gap-2"
                           >
                               <Check className="w-5 h-5" />
                               確認儲存
@@ -470,7 +615,11 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
             ) : (
                 <div className="space-y-4">
                     {exerciseLogs.map(item => (
-                        <div key={item.id} className="flex justify-between items-center group bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                        <div 
+                            key={item.id} 
+                            className="flex justify-between items-center group bg-gray-50 p-3 rounded-2xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => setEditingExercise(item)}
+                        >
                              <div className="flex items-center gap-3">
                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${item.type === ExerciseType.Cardio ? 'bg-sky-100 text-sky-500' : 'bg-purple-100 text-purple-500'}`}>
                                     {item.type === ExerciseType.Cardio ? <Waves className="w-5 h-5" /> : <Dumbbell className="w-5 h-5" />}
@@ -485,7 +634,10 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
                                     -{item.caloriesBurned} <span className="text-xs font-normal text-gray-400">kcal</span>
                                 </span>
                                 <button 
-                                    onClick={() => onDeleteExercise(item.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteExercise(item.id);
+                                    }}
                                     className="text-gray-300 hover:text-red-500 transition p-1"
                                 >
                                     <Trash2 className="w-4 h-4" />
