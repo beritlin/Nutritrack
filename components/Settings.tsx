@@ -65,12 +65,12 @@ const Settings: React.FC<SettingsProps> = ({ profile, onUpdateProfile, logs, exe
         if (prev.dietStrategy === DietStrategy.CarbCycling && !prev.customCycleTargets) {
              updates.customCycleTargets = {
                 [CycleDayType.HighCarb]: { 
-                    targetCalories: 2400, 
-                    grains: 4, proteins: 6, vegetables: 4, fruits: 3, dairy: 1.5, oils: 4 
+                    targetCalories: 1800, 
+                    grains: 12, proteins: 12, vegetables: 3, fruits: 1, dairy: 0, oils: 8.5 
                 },
                 [CycleDayType.LowCarb]: { 
                     targetCalories: 1600, 
-                    grains: 1, proteins: 8, vegetables: 5, fruits: 1, dairy: 1.5, oils: 6 
+                    grains: 10.5, proteins: 10, vegetables: 3, fruits: 1, dairy: 0, oils: 9 
                 },
              };
         }
@@ -147,7 +147,8 @@ const Settings: React.FC<SettingsProps> = ({ profile, onUpdateProfile, logs, exe
         const result = await getDietAdvice(profile, logs);
         setAdvice(result);
     } catch (e) {
-        setAdvice("無法獲取建議，請確認網路或 API Key。");
+        // @ts-ignore
+        setAdvice(`無法獲取建議: ${e.message || "請確認網路或 API Key。"}`);
     } finally {
         setLoadingAdvice(false);
     }

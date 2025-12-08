@@ -25,15 +25,15 @@ export const DEFAULT_PROFILE: UserProfile = {
   currentCycleType: CycleDayType.LowCarb, // Default to Low Carb
   isCustomTargets: false, // Default to auto-calculation
 
-  // Initialize with some sensible defaults so it's not empty if they switch immediately
+  // Initialize with user-specified defaults
   customCycleTargets: {
     [CycleDayType.HighCarb]: { 
-        targetCalories: 2400, 
-        grains: 4, proteins: 6, vegetables: 4, fruits: 3, dairy: 1.5, oils: 4 
+        targetCalories: 1800, 
+        grains: 12, proteins: 12, vegetables: 3, fruits: 1, dairy: 0, oils: 8.5 
     },
     [CycleDayType.LowCarb]: { 
         targetCalories: 1600, 
-        grains: 1, proteins: 8, vegetables: 5, fruits: 1, dairy: 1.5, oils: 6 
+        grains: 10.5, proteins: 10, vegetables: 3, fruits: 1, dairy: 0, oils: 9 
     },
   },
 

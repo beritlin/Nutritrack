@@ -198,12 +198,26 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({
 
   const handleEditServing = (key: string, value: number) => {
       if (!editingFood) return;
+
+      const newServings = {
+          ...editingFood.servings,
+          [key]: value
+      };
+
+      // Auto-calculate calories based on standard portions
+      // Grains: 70, Protein: 75, Veg: 25, Fruit: 60, Dairy: 120, Oil: 45
+      const estimatedCalories = 
+        (newServings.grains || 0) * 70 +
+        (newServings.proteins || 0) * 75 +
+        (newServings.vegetables || 0) * 25 +
+        (newServings.fruits || 0) * 60 +
+        (newServings.dairy || 0) * 120 +
+        (newServings.oils || 0) * 45;
+
       setEditingFood({
           ...editingFood,
-          servings: {
-              ...editingFood.servings,
-              [key]: value
-          }
+          servings: newServings,
+          calories: Math.round(estimatedCalories)
       });
   };
 
